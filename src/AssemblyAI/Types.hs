@@ -14,6 +14,7 @@ module AssemblyAI.Types
   , TranscriptStatus (..)
   , TranscriptId (..)
   , AudioUrl (..)
+  , SpeechModel (..)
     -- * List Transcripts
   , TranscriptList (..)
   , TranscriptListItem (..)
@@ -87,13 +88,33 @@ instance ToHttpApiData TranscriptStatus where
   toUrlPiece Completed  = "completed"
   toUrlPiece Error      = "error"
 
+-- | Speech model to use for transcription
+data SpeechModel
+  = Universal3Pro
+  | Universal2
+  deriving stock (Show, Eq, Generic)
+
+instance FromJSON SpeechModel where
+  parseJSON = withText "SpeechModel" $ \t -> case t of
+    "universal-3-pro" -> pure Universal3Pro
+    "universal-2"     -> pure Universal2
+    _                 -> fail $ "Unknown speech model: " ++ show t
+
+instance ToJSON SpeechModel where
+  toJSON Universal3Pro = "universal-3-pro"
+  toJSON Universal2    = "universal-2"
+
 -- | Request to create a new transcript
-newtype TranscriptRequest = TranscriptRequest
-  { trAudioUrl :: AudioUrl
+data TranscriptRequest = TranscriptRequest
+  { trAudioUrl      :: AudioUrl
+  , trSpeechModels  :: [SpeechModel]
   } deriving stock (Show, Eq, Generic)
 
 instance ToJSON TranscriptRequest where
-  toJSON (TranscriptRequest url) = object ["audio_url" .= url]
+  toJSON r = object
+    [ "audio_url"      .= trAudioUrl r
+    , "speech_models"  .= trSpeechModels r
+    ]
 
 -- | A transcript from the AssemblyAI API
 data Transcript = Transcript
