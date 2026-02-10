@@ -24,14 +24,15 @@ import Servant.Client (BaseUrl, ClientM, client, mkClientEnv, parseBaseUrl, runC
 data AssemblyAIClient = AssemblyAIClient
   { acManager :: Manager
   , acBaseUrl :: BaseUrl
+  , acApiKey  :: ApiKey
   }
 
 -- | Create a new AssemblyAI client
 mkAssemblyAIClient :: ApiKey -> IO AssemblyAIClient
-mkAssemblyAIClient _ = do
+mkAssemblyAIClient apiKey = do
   manager <- newManager tlsManagerSettings
   baseUrl <- parseBaseUrl "https://api.assemblyai.com"
-  pure $ AssemblyAIClient manager baseUrl
+  pure $ AssemblyAIClient manager baseUrl apiKey
 
 -- | Run an AssemblyAI API call
 runAssemblyAI :: AssemblyAIClient -> ClientM a -> IO (Either Text a)
@@ -42,13 +43,17 @@ runAssemblyAI env action = do
     Left err -> pure $ Left $ T.pack $ show err
     Right r  -> pure $ Right r
 
--- | Create a new transcript
-createTranscript :: ApiKey -> TranscriptRequest -> ClientM Transcript
-createTranscript (ApiKey key) req = createTranscript' key req
+-- | Create a new transcript using the client's API key
+createTranscript :: AssemblyAIClient -> TranscriptRequest -> ClientM Transcript
+createTranscript env req = 
+  let ApiKey key = acApiKey env
+  in createTranscript' key req
 
--- | Get a transcript by ID
-getTranscript :: ApiKey -> TranscriptId -> ClientM Transcript
-getTranscript (ApiKey key) tid = getTranscript' key tid
+-- | Get a transcript by ID using the client's API key
+getTranscript :: AssemblyAIClient -> TranscriptId -> ClientM Transcript
+getTranscript env tid = 
+  let ApiKey key = acApiKey env
+  in getTranscript' key tid
 
 -- Internal client functions
 createTranscript' :: Text -> TranscriptRequest -> ClientM Transcript

@@ -14,7 +14,7 @@
 --   let apiKey = ApiKey "your-api-key"
 --   client <- mkAssemblyAIClient apiKey
 --   let request = TranscriptRequest (AudioUrl "https://example.com/audio.mp3")
---   result <- runAssemblyAI client (createTranscript apiKey request)
+--   result <- runAssemblyAI client (createTranscript client request)
 --   case result of
 --     Left err -> putStrLn $ "Error: " ++ show err
 --     Right transcript -> print transcript

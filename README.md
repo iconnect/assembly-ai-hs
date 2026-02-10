@@ -33,7 +33,7 @@ main = do
   
   -- Create a transcript
   let request = TranscriptRequest (AudioUrl "https://example.com/audio.mp3")
-  result <- runAssemblyAI client (createTranscript apiKey request)
+  result <- runAssemblyAI client (createTranscript client request)
   
   case result of
     Left err -> putStrLn $ "Error: " ++ T.unpack err
