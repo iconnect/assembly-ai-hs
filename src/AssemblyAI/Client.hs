@@ -6,6 +6,8 @@ module AssemblyAI.Client
     AssemblyAIClient
   , mkAssemblyAIClient
   , runAssemblyAI
+    -- * File Upload
+  , uploadFile
     -- * Transcript Operations
   , createTranscript
   , listTranscripts
@@ -32,8 +34,10 @@ import AssemblyAI.Types
   , TranscriptList
   , TranscriptRequest
   , TranscriptStatus
+  , UploadedFile
   , WordSearchResponse
   )
+import Data.ByteString.Lazy (ByteString)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Network.HTTP.Client (Manager, newManager)
@@ -68,6 +72,10 @@ runAssemblyAI env action = do
 -- | Extract the raw key text from a client
 apiKeyText :: AssemblyAIClient -> Text
 apiKeyText env = let ApiKey k = acApiKey env in k
+
+-- | Upload a media file (raw bytes) and get back a URL for transcription
+uploadFile :: AssemblyAIClient -> ByteString -> ClientM UploadedFile
+uploadFile env = uploadFile' (apiKeyText env)
 
 -- | Create a new transcript
 createTranscript :: AssemblyAIClient -> TranscriptRequest -> ClientM Transcript
@@ -119,10 +127,11 @@ searchWords env = searchWords' (apiKeyText env)
 getRedactedAudio :: AssemblyAIClient -> TranscriptId -> ClientM RedactedAudioResponse
 getRedactedAudio env = getRedactedAudio' (apiKeyText env)
 
--- Internal: the factored API means `client assemblyAIAPI` produces a single
--- function @Text -> (ep1 :<|> ep2 :<|> ... :<|> ep9)@.  We apply the auth
--- key once to get the endpoint tree, then destructure it.
-endpoints
+-- Internal: `client assemblyAIAPI` produces
+-- @Text -> ((transcript endpoints :<|> ...) :<|> (upload endpoint))@.
+-- We first split into transcript vs upload branches, then destructure
+-- the transcript endpoints.
+transcriptEndpoints
   :: Text
   -> (TranscriptRequest -> ClientM Transcript)
      :<|> (Maybe Int -> Maybe TranscriptStatus -> Maybe Text
@@ -134,42 +143,45 @@ endpoints
      :<|> (TranscriptId -> SubtitleFormat -> Maybe Int -> ClientM Text)
      :<|> (TranscriptId -> Text -> ClientM WordSearchResponse)
      :<|> (TranscriptId -> ClientM RedactedAudioResponse)
-endpoints = client assemblyAIAPI
+transcriptEndpoints key = let tApi :<|> _ = client assemblyAIAPI key in tApi
+
+uploadFile' :: Text -> ByteString -> ClientM UploadedFile
+uploadFile' key body = let _ :<|> f = client assemblyAIAPI key in f body
 
 createTranscript' :: Text -> TranscriptRequest -> ClientM Transcript
 createTranscript' key req =
-  let f :<|> _ = endpoints key in f req
+  let f :<|> _ = transcriptEndpoints key in f req
 
 listTranscripts'
   :: Text -> Maybe Int -> Maybe TranscriptStatus -> Maybe Text
   -> Maybe Text -> Maybe Text -> Maybe Bool -> ClientM TranscriptList
 listTranscripts' key a b c d e f =
-  let _ :<|> g :<|> _ = endpoints key in g a b c d e f
+  let _ :<|> g :<|> _ = transcriptEndpoints key in g a b c d e f
 
 getTranscript' :: Text -> TranscriptId -> ClientM Transcript
 getTranscript' key tid =
-  let _ :<|> _ :<|> f :<|> _ = endpoints key in f tid
+  let _ :<|> _ :<|> f :<|> _ = transcriptEndpoints key in f tid
 
 deleteTranscript' :: Text -> TranscriptId -> ClientM Transcript
 deleteTranscript' key tid =
-  let _ :<|> _ :<|> _ :<|> f :<|> _ = endpoints key in f tid
+  let _ :<|> _ :<|> _ :<|> f :<|> _ = transcriptEndpoints key in f tid
 
 getSentences' :: Text -> TranscriptId -> ClientM SentencesResponse
 getSentences' key tid =
-  let _ :<|> _ :<|> _ :<|> _ :<|> f :<|> _ = endpoints key in f tid
+  let _ :<|> _ :<|> _ :<|> _ :<|> f :<|> _ = transcriptEndpoints key in f tid
 
 getParagraphs' :: Text -> TranscriptId -> ClientM ParagraphsResponse
 getParagraphs' key tid =
-  let _ :<|> _ :<|> _ :<|> _ :<|> _ :<|> f :<|> _ = endpoints key in f tid
+  let _ :<|> _ :<|> _ :<|> _ :<|> _ :<|> f :<|> _ = transcriptEndpoints key in f tid
 
 getSubtitles' :: Text -> TranscriptId -> SubtitleFormat -> Maybe Int -> ClientM Text
 getSubtitles' key tid fmt mChars =
-  let _ :<|> _ :<|> _ :<|> _ :<|> _ :<|> _ :<|> f :<|> _ = endpoints key in f tid fmt mChars
+  let _ :<|> _ :<|> _ :<|> _ :<|> _ :<|> _ :<|> f :<|> _ = transcriptEndpoints key in f tid fmt mChars
 
 searchWords' :: Text -> TranscriptId -> Text -> ClientM WordSearchResponse
 searchWords' key tid ws =
-  let _ :<|> _ :<|> _ :<|> _ :<|> _ :<|> _ :<|> _ :<|> f :<|> _ = endpoints key in f tid ws
+  let _ :<|> _ :<|> _ :<|> _ :<|> _ :<|> _ :<|> _ :<|> f :<|> _ = transcriptEndpoints key in f tid ws
 
 getRedactedAudio' :: Text -> TranscriptId -> ClientM RedactedAudioResponse
 getRedactedAudio' key tid =
-  let _ :<|> _ :<|> _ :<|> _ :<|> _ :<|> _ :<|> _ :<|> _ :<|> f = endpoints key in f tid
+  let _ :<|> _ :<|> _ :<|> _ :<|> _ :<|> _ :<|> _ :<|> _ :<|> f = transcriptEndpoints key in f tid

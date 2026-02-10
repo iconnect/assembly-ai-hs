@@ -4,6 +4,7 @@
 module AssemblyAI.API
   ( AssemblyAIAPI
   , TranscriptAPI
+  , UploadAPI
   , assemblyAIAPI
   ) where
 
@@ -17,8 +18,10 @@ import AssemblyAI.Types
   , TranscriptList
   , TranscriptRequest
   , TranscriptStatus
+  , UploadedFile
   , WordSearchResponse
   )
+import Data.ByteString.Lazy (ByteString)
 import Data.Proxy (Proxy (..))
 import Data.Text (Text)
 import Servant.API
@@ -27,6 +30,7 @@ import Servant.API
   , Get
   , Header'
   , JSON
+  , OctetStream
   , PlainText
   , Post
   , QueryParam
@@ -38,13 +42,17 @@ import Servant.API
   , type (:>)
   )
 
--- | The AssemblyAI API for transcripts.
+-- | The full AssemblyAI API.
 --
--- Authentication and the @\/v2\/transcript@ base path are factored out
--- so they appear only once.
+-- Authentication is factored out so it appears only once.  The @\/v2@
+-- prefix is shared and then the API branches into transcript and upload
+-- sub-APIs.
 type AssemblyAIAPI =
   Header' '[Required, Strict] "authorization" Text
-    :> "v2" :> "transcript" :> TranscriptAPI
+    :> "v2"
+    :> (    "transcript" :> TranscriptAPI
+       :<|> "upload" :> UploadAPI
+       )
 
 -- | All transcript endpoints, without the shared auth header and base path.
 type TranscriptAPI =
@@ -90,6 +98,12 @@ type TranscriptAPI =
   :<|> Capture "transcript_id" TranscriptId
     :> "redacted-audio"
     :> Get '[JSON] RedactedAudioResponse
+
+-- | File upload endpoint.
+--
+-- @POST \/v2\/upload@ — upload a media file as raw binary data.
+type UploadAPI =
+  ReqBody '[OctetStream] ByteString :> Post '[JSON] UploadedFile
 
 -- | Proxy for the AssemblyAI API
 assemblyAIAPI :: Proxy AssemblyAIAPI

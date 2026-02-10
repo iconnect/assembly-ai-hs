@@ -30,6 +30,8 @@ module AssemblyAI.Types
   , WordSearchMatch (..)
     -- * Redacted Audio
   , RedactedAudioResponse (..)
+    -- * File Upload
+  , UploadedFile (..)
   ) where
 
 import Data.Aeson (FromJSON (..), ToJSON (..), object, withObject, withText, (.:), (.:?), (.=))
@@ -365,3 +367,15 @@ instance ToJSON RedactedAudioResponse where
     [ "status"             .= rarStatus r
     , "redacted_audio_url" .= rarRedactedAudioUrl r
     ]
+
+-- | Response from uploading a media file
+newtype UploadedFile = UploadedFile
+  { ufUploadUrl :: Text
+  } deriving stock (Show, Eq, Generic)
+
+instance FromJSON UploadedFile where
+  parseJSON = withObject "UploadedFile" $ \o -> UploadedFile
+    <$> o .: "upload_url"
+
+instance ToJSON UploadedFile where
+  toJSON u = object ["upload_url" .= ufUploadUrl u]
