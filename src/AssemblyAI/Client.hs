@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+
 {-# LANGUAGE TypeOperators #-}
 
 module AssemblyAI.Client
@@ -71,7 +71,7 @@ apiKeyText env = let ApiKey k = acApiKey env in k
 
 -- | Create a new transcript
 createTranscript :: AssemblyAIClient -> TranscriptRequest -> ClientM Transcript
-createTranscript env req = createTranscript' (apiKeyText env) req
+createTranscript env = createTranscript' (apiKeyText env)
 
 -- | List transcripts with optional filters
 listTranscripts
@@ -83,24 +83,23 @@ listTranscripts
   -> Maybe Text              -- ^ Get transcripts created after this transcript ID
   -> Maybe Bool              -- ^ Only get throttled transcripts
   -> ClientM TranscriptList
-listTranscripts env mLimit mStatus mCreatedOn mBeforeId mAfterId mThrottled =
-  listTranscripts' (apiKeyText env) mLimit mStatus mCreatedOn mBeforeId mAfterId mThrottled
+listTranscripts env = listTranscripts' (apiKeyText env)
 
 -- | Get a transcript by ID
 getTranscript :: AssemblyAIClient -> TranscriptId -> ClientM Transcript
-getTranscript env tid = getTranscript' (apiKeyText env) tid
+getTranscript env = getTranscript' (apiKeyText env)
 
 -- | Delete a transcript by ID
 deleteTranscript :: AssemblyAIClient -> TranscriptId -> ClientM Transcript
-deleteTranscript env tid = deleteTranscript' (apiKeyText env) tid
+deleteTranscript env = deleteTranscript' (apiKeyText env)
 
 -- | Get sentences for a transcript
 getSentences :: AssemblyAIClient -> TranscriptId -> ClientM SentencesResponse
-getSentences env tid = getSentences' (apiKeyText env) tid
+getSentences env = getSentences' (apiKeyText env)
 
 -- | Get paragraphs for a transcript
 getParagraphs :: AssemblyAIClient -> TranscriptId -> ClientM ParagraphsResponse
-getParagraphs env tid = getParagraphs' (apiKeyText env) tid
+getParagraphs env = getParagraphs' (apiKeyText env)
 
 -- | Get subtitles for a transcript in SRT or VTT format
 getSubtitles
@@ -109,17 +108,16 @@ getSubtitles
   -> SubtitleFormat
   -> Maybe Int       -- ^ Maximum characters per caption
   -> ClientM Text
-getSubtitles env tid fmt mChars =
-  getSubtitles' (apiKeyText env) tid fmt mChars
+getSubtitles env = getSubtitles' (apiKeyText env)
 
 -- | Search for words in a transcript.
 -- The words parameter should be a comma-separated list of keywords.
 searchWords :: AssemblyAIClient -> TranscriptId -> Text -> ClientM WordSearchResponse
-searchWords env tid words_ = searchWords' (apiKeyText env) tid words_
+searchWords env = searchWords' (apiKeyText env)
 
 -- | Get the redacted audio for a transcript
 getRedactedAudio :: AssemblyAIClient -> TranscriptId -> ClientM RedactedAudioResponse
-getRedactedAudio env tid = getRedactedAudio' (apiKeyText env) tid
+getRedactedAudio env = getRedactedAudio' (apiKeyText env)
 
 -- Internal: the factored API means `client assemblyAIAPI` produces a single
 -- function @Text -> (ep1 :<|> ep2 :<|> ... :<|> ep9)@.  We apply the auth
