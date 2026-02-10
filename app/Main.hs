@@ -3,18 +3,20 @@
 module Main where
 
 import AssemblyAI
-import System.Environment (getEnv)
 import qualified Data.Text as T
+import Servant.Client (parseBaseUrl)
+import System.Environment (getEnv)
 
 main :: IO ()
 main = do
   -- Get API key from environment variable
   apiKeyStr <- getEnv "ASSEMBLYAI_API_KEY"
   let apiKey = ApiKey (T.pack apiKeyStr)
-  
+
   -- Create client (storing the API key)
-  _ <- mkAssemblyAIClient apiKey
-  
+  url <- parseBaseUrl "api.assembly.com"
+  _ <- mkAssemblyAIClient url apiKey
+
   putStrLn "AssemblyAI Haskell Client Example"
   putStrLn "=================================="
   putStrLn ""

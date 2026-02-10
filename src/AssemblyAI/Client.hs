@@ -1,24 +1,45 @@
-{-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeOperators #-}
 
 module AssemblyAI.Client
-  ( -- * Client Functions
-    createTranscript
-  , getTranscript
-    -- * Client Environment
-  , AssemblyAIClient
+  ( -- * Client Environment
+    AssemblyAIClient
   , mkAssemblyAIClient
   , runAssemblyAI
+    -- * Transcript Operations
+  , createTranscript
+  , listTranscripts
+  , getTranscript
+  , deleteTranscript
+    -- * Transcript Content
+  , getSentences
+  , getParagraphs
+  , getSubtitles
+    -- * Transcript Analysis
+  , searchWords
+  , getRedactedAudio
   ) where
 
 import AssemblyAI.API (assemblyAIAPI)
-import AssemblyAI.Types (ApiKey (..), Transcript, TranscriptId, TranscriptRequest)
+import AssemblyAI.Types
+  ( ApiKey (..)
+  , ParagraphsResponse
+  , RedactedAudioResponse
+  , SentencesResponse
+  , SubtitleFormat
+  , Transcript
+  , TranscriptId
+  , TranscriptList
+  , TranscriptRequest
+  , TranscriptStatus
+  , WordSearchResponse
+  )
 import Data.Text (Text)
 import qualified Data.Text as T
 import Network.HTTP.Client (Manager, newManager)
 import Network.HTTP.Client.TLS (tlsManagerSettings)
 import Servant.API (type (:<|>) (..))
-import Servant.Client (BaseUrl, ClientM, client, mkClientEnv, parseBaseUrl, runClientM)
+import Servant.Client (BaseUrl, ClientM, client, mkClientEnv, runClientM)
 
 -- | Client environment for AssemblyAI API
 data AssemblyAIClient = AssemblyAIClient
@@ -27,11 +48,12 @@ data AssemblyAIClient = AssemblyAIClient
   , acApiKey  :: ApiKey
   }
 
--- | Create a new AssemblyAI client
-mkAssemblyAIClient :: ApiKey -> IO AssemblyAIClient
-mkAssemblyAIClient apiKey = do
+-- | Create a new AssemblyAI client. The 'BaseUrl' is passed
+-- as a parameter because depending on the region the user might
+-- want to use a different endpoint (like the EU one, for example).
+mkAssemblyAIClient :: BaseUrl -> ApiKey -> IO AssemblyAIClient
+mkAssemblyAIClient baseUrl apiKey = do
   manager <- newManager tlsManagerSettings
-  baseUrl <- parseBaseUrl "https://api.assemblyai.com"
   pure $ AssemblyAIClient manager baseUrl apiKey
 
 -- | Run an AssemblyAI API call
@@ -43,19 +65,113 @@ runAssemblyAI env action = do
     Left err -> pure $ Left $ T.pack $ show err
     Right r  -> pure $ Right r
 
--- | Create a new transcript using the client's API key
+-- | Extract the raw key text from a client
+apiKeyText :: AssemblyAIClient -> Text
+apiKeyText env = let ApiKey k = acApiKey env in k
+
+-- | Create a new transcript
 createTranscript :: AssemblyAIClient -> TranscriptRequest -> ClientM Transcript
-createTranscript env req = 
-  let ApiKey key = acApiKey env
-  in createTranscript' key req
+createTranscript env req = createTranscript' (apiKeyText env) req
 
--- | Get a transcript by ID using the client's API key
+-- | List transcripts with optional filters
+listTranscripts
+  :: AssemblyAIClient
+  -> Maybe Int               -- ^ Maximum number of transcripts to retrieve
+  -> Maybe TranscriptStatus  -- ^ Filter by status
+  -> Maybe Text              -- ^ Only get transcripts created on this date
+  -> Maybe Text              -- ^ Get transcripts created before this transcript ID
+  -> Maybe Text              -- ^ Get transcripts created after this transcript ID
+  -> Maybe Bool              -- ^ Only get throttled transcripts
+  -> ClientM TranscriptList
+listTranscripts env mLimit mStatus mCreatedOn mBeforeId mAfterId mThrottled =
+  listTranscripts' (apiKeyText env) mLimit mStatus mCreatedOn mBeforeId mAfterId mThrottled
+
+-- | Get a transcript by ID
 getTranscript :: AssemblyAIClient -> TranscriptId -> ClientM Transcript
-getTranscript env tid = 
-  let ApiKey key = acApiKey env
-  in getTranscript' key tid
+getTranscript env tid = getTranscript' (apiKeyText env) tid
 
--- Internal client functions
+-- | Delete a transcript by ID
+deleteTranscript :: AssemblyAIClient -> TranscriptId -> ClientM Transcript
+deleteTranscript env tid = deleteTranscript' (apiKeyText env) tid
+
+-- | Get sentences for a transcript
+getSentences :: AssemblyAIClient -> TranscriptId -> ClientM SentencesResponse
+getSentences env tid = getSentences' (apiKeyText env) tid
+
+-- | Get paragraphs for a transcript
+getParagraphs :: AssemblyAIClient -> TranscriptId -> ClientM ParagraphsResponse
+getParagraphs env tid = getParagraphs' (apiKeyText env) tid
+
+-- | Get subtitles for a transcript in SRT or VTT format
+getSubtitles
+  :: AssemblyAIClient
+  -> TranscriptId
+  -> SubtitleFormat
+  -> Maybe Int       -- ^ Maximum characters per caption
+  -> ClientM Text
+getSubtitles env tid fmt mChars =
+  getSubtitles' (apiKeyText env) tid fmt mChars
+
+-- | Search for words in a transcript.
+-- The words parameter should be a comma-separated list of keywords.
+searchWords :: AssemblyAIClient -> TranscriptId -> Text -> ClientM WordSearchResponse
+searchWords env tid words_ = searchWords' (apiKeyText env) tid words_
+
+-- | Get the redacted audio for a transcript
+getRedactedAudio :: AssemblyAIClient -> TranscriptId -> ClientM RedactedAudioResponse
+getRedactedAudio env tid = getRedactedAudio' (apiKeyText env) tid
+
+-- Internal: the factored API means `client assemblyAIAPI` produces a single
+-- function @Text -> (ep1 :<|> ep2 :<|> ... :<|> ep9)@.  We apply the auth
+-- key once to get the endpoint tree, then destructure it.
+endpoints
+  :: Text
+  -> (TranscriptRequest -> ClientM Transcript)
+     :<|> (Maybe Int -> Maybe TranscriptStatus -> Maybe Text
+           -> Maybe Text -> Maybe Text -> Maybe Bool -> ClientM TranscriptList)
+     :<|> (TranscriptId -> ClientM Transcript)
+     :<|> (TranscriptId -> ClientM Transcript)
+     :<|> (TranscriptId -> ClientM SentencesResponse)
+     :<|> (TranscriptId -> ClientM ParagraphsResponse)
+     :<|> (TranscriptId -> SubtitleFormat -> Maybe Int -> ClientM Text)
+     :<|> (TranscriptId -> Text -> ClientM WordSearchResponse)
+     :<|> (TranscriptId -> ClientM RedactedAudioResponse)
+endpoints = client assemblyAIAPI
+
 createTranscript' :: Text -> TranscriptRequest -> ClientM Transcript
+createTranscript' key req =
+  let f :<|> _ = endpoints key in f req
+
+listTranscripts'
+  :: Text -> Maybe Int -> Maybe TranscriptStatus -> Maybe Text
+  -> Maybe Text -> Maybe Text -> Maybe Bool -> ClientM TranscriptList
+listTranscripts' key a b c d e f =
+  let _ :<|> g :<|> _ = endpoints key in g a b c d e f
+
 getTranscript' :: Text -> TranscriptId -> ClientM Transcript
-createTranscript' :<|> getTranscript' = client assemblyAIAPI
+getTranscript' key tid =
+  let _ :<|> _ :<|> f :<|> _ = endpoints key in f tid
+
+deleteTranscript' :: Text -> TranscriptId -> ClientM Transcript
+deleteTranscript' key tid =
+  let _ :<|> _ :<|> _ :<|> f :<|> _ = endpoints key in f tid
+
+getSentences' :: Text -> TranscriptId -> ClientM SentencesResponse
+getSentences' key tid =
+  let _ :<|> _ :<|> _ :<|> _ :<|> f :<|> _ = endpoints key in f tid
+
+getParagraphs' :: Text -> TranscriptId -> ClientM ParagraphsResponse
+getParagraphs' key tid =
+  let _ :<|> _ :<|> _ :<|> _ :<|> _ :<|> f :<|> _ = endpoints key in f tid
+
+getSubtitles' :: Text -> TranscriptId -> SubtitleFormat -> Maybe Int -> ClientM Text
+getSubtitles' key tid fmt mChars =
+  let _ :<|> _ :<|> _ :<|> _ :<|> _ :<|> _ :<|> f :<|> _ = endpoints key in f tid fmt mChars
+
+searchWords' :: Text -> TranscriptId -> Text -> ClientM WordSearchResponse
+searchWords' key tid ws =
+  let _ :<|> _ :<|> _ :<|> _ :<|> _ :<|> _ :<|> _ :<|> f :<|> _ = endpoints key in f tid ws
+
+getRedactedAudio' :: Text -> TranscriptId -> ClientM RedactedAudioResponse
+getRedactedAudio' key tid =
+  let _ :<|> _ :<|> _ :<|> _ :<|> _ :<|> _ :<|> _ :<|> _ :<|> f = endpoints key in f tid
