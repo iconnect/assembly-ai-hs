@@ -14,10 +14,16 @@ module AssemblyAI.Types
     -- * Transcript Types
   , Transcript (..)
   , TranscriptRequest (..)
+  , newTranscriptRequest
   , TranscriptStatus (..)
   , TranscriptId (..)
   , AudioUrl (..)
   , SpeechModel (..)
+  , CustomSpelling (..)
+  , RedactPiiSub (..)
+  , RedactPiiAudioQuality (..)
+  , SummaryModel (..)
+  , SummaryType (..)
     -- * List Transcripts
   , TranscriptList (..)
   , TranscriptListItem (..)
@@ -38,7 +44,8 @@ module AssemblyAI.Types
   , UploadedFile (..)
   ) where
 
-import Data.Aeson (FromJSON (..), ToJSON (..), object, withObject, withText, (.:), (.:?), (.=))
+import Data.Aeson (FromJSON (..), ToJSON (..), Value, object, withObject, withText, (.:), (.:?), (.=))
+import Data.Maybe (catMaybes)
 import Data.Text.Lazy.Encoding qualified as TE
 import Data.Text.Lazy qualified as T
 import Data.Text (Text)
@@ -119,17 +126,237 @@ instance ToJSON SpeechModel where
   toJSON Universal3Pro = "universal-3-pro"
   toJSON Universal2    = "universal-2"
 
+-- | Custom spelling rule for transcription
+data CustomSpelling = CustomSpelling
+  { csFrom :: [Text]
+  , csTo   :: Text
+  } deriving stock (Show, Eq, Generic)
+
+instance ToJSON CustomSpelling where
+  toJSON c = object
+    [ "from" .= csFrom c
+    , "to"   .= csTo c
+    ]
+
+instance FromJSON CustomSpelling where
+  parseJSON = withObject "CustomSpelling" $ \o -> CustomSpelling
+    <$> o .: "from"
+    <*> o .: "to"
+
+-- | PII redaction substitution method
+data RedactPiiSub
+  = EntityName
+  | HashSub
+  deriving stock (Show, Eq, Generic)
+
+instance ToJSON RedactPiiSub where
+  toJSON EntityName = "entity_name"
+  toJSON HashSub    = "hash"
+
+instance FromJSON RedactPiiSub where
+  parseJSON = withText "RedactPiiSub" $ \t -> case t of
+    "entity_name" -> pure EntityName
+    "hash"        -> pure HashSub
+    _             -> fail $ "Unknown redact_pii_sub: " ++ show t
+
+-- | Audio quality for PII-redacted audio
+data RedactPiiAudioQuality
+  = QualityMp3
+  | QualityWav
+  deriving stock (Show, Eq, Generic)
+
+instance ToJSON RedactPiiAudioQuality where
+  toJSON QualityMp3 = "mp3"
+  toJSON QualityWav = "wav"
+
+instance FromJSON RedactPiiAudioQuality where
+  parseJSON = withText "RedactPiiAudioQuality" $ \t -> case t of
+    "mp3" -> pure QualityMp3
+    "wav" -> pure QualityWav
+    _     -> fail $ "Unknown redact_pii_audio_quality: " ++ show t
+
+-- | Summary model type
+data SummaryModel
+  = Informative
+  | Conversational
+  | CatchySummary
+  deriving stock (Show, Eq, Generic)
+
+instance ToJSON SummaryModel where
+  toJSON Informative    = "informative"
+  toJSON Conversational = "conversational"
+  toJSON CatchySummary  = "catchy"
+
+instance FromJSON SummaryModel where
+  parseJSON = withText "SummaryModel" $ \t -> case t of
+    "informative"    -> pure Informative
+    "conversational" -> pure Conversational
+    "catchy"         -> pure CatchySummary
+    _                -> fail $ "Unknown summary_model: " ++ show t
+
+-- | Summary output format
+data SummaryType
+  = BulletsSummary
+  | BulletsVerbose
+  | GistSummary
+  | HeadlineSummary
+  | ParagraphSummary
+  deriving stock (Show, Eq, Generic)
+
+instance ToJSON SummaryType where
+  toJSON BulletsSummary  = "bullets"
+  toJSON BulletsVerbose  = "bullets_verbose"
+  toJSON GistSummary     = "gist"
+  toJSON HeadlineSummary = "headline"
+  toJSON ParagraphSummary = "paragraph"
+
+instance FromJSON SummaryType where
+  parseJSON = withText "SummaryType" $ \t -> case t of
+    "bullets"         -> pure BulletsSummary
+    "bullets_verbose" -> pure BulletsVerbose
+    "gist"            -> pure GistSummary
+    "headline"        -> pure HeadlineSummary
+    "paragraph"       -> pure ParagraphSummary
+    _                 -> fail $ "Unknown summary_type: " ++ show t
+
 -- | Request to create a new transcript
 data TranscriptRequest = TranscriptRequest
-  { trAudioUrl      :: AudioUrl
-  , trSpeechModels  :: [SpeechModel]
+  { trAudioUrl                     :: AudioUrl
+  , trSpeechModels                 :: [SpeechModel]
+  , trAudioEndAt                   :: Maybe Int
+  , trAudioStartFrom               :: Maybe Int
+  , trAutoChapters                 :: Maybe Bool
+  , trAutoHighlights               :: Maybe Bool
+  , trContentSafety                :: Maybe Bool
+  , trContentSafetyConfidence      :: Maybe Int
+  , trCustomSpelling               :: Maybe [CustomSpelling]
+  , trDisfluencies                 :: Maybe Bool
+  , trEntityDetection              :: Maybe Bool
+  , trFilterProfanity              :: Maybe Bool
+  , trFormatText                   :: Maybe Bool
+  , trIabCategories                :: Maybe Bool
+  , trKeytermsPrompt               :: Maybe [Text]
+  , trLanguageCode                 :: Maybe Text
+  , trLanguageCodes                :: Maybe [Text]
+  , trLanguageConfidenceThreshold  :: Maybe Double
+  , trLanguageDetection            :: Maybe Bool
+  , trLanguageDetectionOptions     :: Maybe Value
+  , trMultichannel                 :: Maybe Bool
+  , trPrompt                       :: Maybe Text
+  , trPunctuate                    :: Maybe Bool
+  , trRedactPii                    :: Maybe Bool
+  , trRedactPiiAudio               :: Maybe Bool
+  , trRedactPiiAudioOptions        :: Maybe Value
+  , trRedactPiiAudioQuality        :: Maybe RedactPiiAudioQuality
+  , trRedactPiiPolicies            :: Maybe [Text]
+  , trRedactPiiSub                 :: Maybe RedactPiiSub
+  , trSentimentAnalysis            :: Maybe Bool
+  , trSpeakerLabels                :: Maybe Bool
+  , trSpeakerOptions               :: Maybe Value
+  , trSpeakersExpected             :: Maybe Int
+  , trSpeechThreshold              :: Maybe Double
+  , trSpeechUnderstanding          :: Maybe Value
+  , trSummarization                :: Maybe Bool
+  , trSummaryModel                 :: Maybe SummaryModel
+  , trSummaryType                  :: Maybe SummaryType
+  , trTemperature                  :: Maybe Double
+  , trWebhookAuthHeaderName        :: Maybe Text
+  , trWebhookAuthHeaderValue       :: Maybe Text
+  , trWebhookUrl                   :: Maybe Text
   } deriving stock (Show, Eq, Generic)
 
 instance ToJSON TranscriptRequest where
-  toJSON r = object
-    [ "audio_url"      .= trAudioUrl r
-    , "speech_models"  .= trSpeechModels r
+  toJSON r = object $ [ "audio_url"     .= trAudioUrl r
+                       , "speech_models" .= trSpeechModels r
+                       ] ++ catMaybes
+    [ ("audio_end_at" .=)                    <$> trAudioEndAt r
+    , ("audio_start_from" .=)                <$> trAudioStartFrom r
+    , ("auto_chapters" .=)                   <$> trAutoChapters r
+    , ("auto_highlights" .=)                 <$> trAutoHighlights r
+    , ("content_safety" .=)                  <$> trContentSafety r
+    , ("content_safety_confidence" .=)       <$> trContentSafetyConfidence r
+    , ("custom_spelling" .=)                 <$> trCustomSpelling r
+    , ("disfluencies" .=)                    <$> trDisfluencies r
+    , ("entity_detection" .=)                <$> trEntityDetection r
+    , ("filter_profanity" .=)                <$> trFilterProfanity r
+    , ("format_text" .=)                     <$> trFormatText r
+    , ("iab_categories" .=)                  <$> trIabCategories r
+    , ("keyterms_prompt" .=)                 <$> trKeytermsPrompt r
+    , ("language_code" .=)                   <$> trLanguageCode r
+    , ("language_codes" .=)                  <$> trLanguageCodes r
+    , ("language_confidence_threshold" .=)   <$> trLanguageConfidenceThreshold r
+    , ("language_detection" .=)              <$> trLanguageDetection r
+    , ("language_detection_options" .=)      <$> trLanguageDetectionOptions r
+    , ("multichannel" .=)                    <$> trMultichannel r
+    , ("prompt" .=)                          <$> trPrompt r
+    , ("punctuate" .=)                       <$> trPunctuate r
+    , ("redact_pii" .=)                      <$> trRedactPii r
+    , ("redact_pii_audio" .=)                <$> trRedactPiiAudio r
+    , ("redact_pii_audio_options" .=)        <$> trRedactPiiAudioOptions r
+    , ("redact_pii_audio_quality" .=)        <$> trRedactPiiAudioQuality r
+    , ("redact_pii_policies" .=)             <$> trRedactPiiPolicies r
+    , ("redact_pii_sub" .=)                  <$> trRedactPiiSub r
+    , ("sentiment_analysis" .=)              <$> trSentimentAnalysis r
+    , ("speaker_labels" .=)                  <$> trSpeakerLabels r
+    , ("speaker_options" .=)                 <$> trSpeakerOptions r
+    , ("speakers_expected" .=)               <$> trSpeakersExpected r
+    , ("speech_threshold" .=)                <$> trSpeechThreshold r
+    , ("speech_understanding" .=)            <$> trSpeechUnderstanding r
+    , ("summarization" .=)                   <$> trSummarization r
+    , ("summary_model" .=)                   <$> trSummaryModel r
+    , ("summary_type" .=)                    <$> trSummaryType r
+    , ("temperature" .=)                     <$> trTemperature r
+    , ("webhook_auth_header_name" .=)        <$> trWebhookAuthHeaderName r
+    , ("webhook_auth_header_value" .=)       <$> trWebhookAuthHeaderValue r
+    , ("webhook_url" .=)                     <$> trWebhookUrl r
     ]
+
+-- | Create a 'TranscriptRequest' with all optional fields set to 'Nothing'.
+newTranscriptRequest :: AudioUrl -> [SpeechModel] -> TranscriptRequest
+newTranscriptRequest audioUrl speechModels = TranscriptRequest
+  { trAudioUrl                    = audioUrl
+  , trSpeechModels                = speechModels
+  , trAudioEndAt                  = Nothing
+  , trAudioStartFrom              = Nothing
+  , trAutoChapters                = Nothing
+  , trAutoHighlights              = Nothing
+  , trContentSafety               = Nothing
+  , trContentSafetyConfidence     = Nothing
+  , trCustomSpelling              = Nothing
+  , trDisfluencies                = Nothing
+  , trEntityDetection             = Nothing
+  , trFilterProfanity             = Nothing
+  , trFormatText                  = Nothing
+  , trIabCategories               = Nothing
+  , trKeytermsPrompt              = Nothing
+  , trLanguageCode                = Nothing
+  , trLanguageCodes               = Nothing
+  , trLanguageConfidenceThreshold = Nothing
+  , trLanguageDetection           = Nothing
+  , trLanguageDetectionOptions    = Nothing
+  , trMultichannel                = Nothing
+  , trPrompt                      = Nothing
+  , trPunctuate                   = Nothing
+  , trRedactPii                   = Nothing
+  , trRedactPiiAudio              = Nothing
+  , trRedactPiiAudioOptions       = Nothing
+  , trRedactPiiAudioQuality       = Nothing
+  , trRedactPiiPolicies           = Nothing
+  , trRedactPiiSub                = Nothing
+  , trSentimentAnalysis           = Nothing
+  , trSpeakerLabels               = Nothing
+  , trSpeakerOptions              = Nothing
+  , trSpeakersExpected            = Nothing
+  , trSpeechThreshold             = Nothing
+  , trSpeechUnderstanding         = Nothing
+  , trSummarization               = Nothing
+  , trSummaryModel                = Nothing
+  , trSummaryType                 = Nothing
+  , trTemperature                 = Nothing
+  , trWebhookAuthHeaderName       = Nothing
+  , trWebhookAuthHeaderValue      = Nothing
+  , trWebhookUrl                  = Nothing
+  }
 
 -- | A transcript from the AssemblyAI API
 data Transcript = Transcript
