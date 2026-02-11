@@ -20,6 +20,7 @@ module AssemblyAI.Types
   , AudioUrl (..)
   , SpeechModel (..)
   , CustomSpelling (..)
+  , PiiPolicy (..)
   , RedactPiiSub (..)
   , RedactPiiAudioQuality (..)
   , SummaryModel (..)
@@ -159,6 +160,124 @@ instance FromJSON RedactPiiSub where
     "hash"        -> pure HashSub
     _             -> fail $ "Unknown redact_pii_sub: " ++ show t
 
+-- | PII policy types for redaction
+data PiiPolicy
+  = PiiAccountNumber
+  | PiiBankingInformation
+  | PiiBloodType
+  | PiiCreditCardCvv
+  | PiiCreditCardExpiration
+  | PiiCreditCardNumber
+  | PiiDate
+  | PiiDateOfBirth
+  | PiiDriversLicense
+  | PiiDrug
+  | PiiEmailAddress
+  | PiiEvent
+  | PiiGenderSexuality
+  | PiiHealthcareNumber
+  | PiiInjury
+  | PiiIpAddress
+  | PiiLanguage
+  | PiiLocation
+  | PiiMedicalCondition
+  | PiiMedicalProcess
+  | PiiMoneyAmount
+  | PiiNationality
+  | PiiNumberSequence
+  | PiiOccupation
+  | PiiOrganization
+  | PiiPassportNumber
+  | PiiPassword
+  | PiiPersonAge
+  | PiiPersonName
+  | PiiPhoneNumber
+  | PiiPoliticalAffiliation
+  | PiiReligion
+  | PiiUrl
+  | PiiUsSocialSecurityNumber
+  | PiiUsername
+  | PiiVehicleId
+  deriving stock (Show, Eq, Generic)
+
+instance ToJSON PiiPolicy where
+  toJSON PiiAccountNumber         = "account_number"
+  toJSON PiiBankingInformation    = "banking_information"
+  toJSON PiiBloodType             = "blood_type"
+  toJSON PiiCreditCardCvv         = "credit_card_cvv"
+  toJSON PiiCreditCardExpiration  = "credit_card_expiration"
+  toJSON PiiCreditCardNumber      = "credit_card_number"
+  toJSON PiiDate                  = "date"
+  toJSON PiiDateOfBirth           = "date_of_birth"
+  toJSON PiiDriversLicense        = "drivers_license"
+  toJSON PiiDrug                  = "drug"
+  toJSON PiiEmailAddress          = "email_address"
+  toJSON PiiEvent                 = "event"
+  toJSON PiiGenderSexuality       = "gender_sexuality"
+  toJSON PiiHealthcareNumber      = "healthcare_number"
+  toJSON PiiInjury                = "injury"
+  toJSON PiiIpAddress             = "ip_address"
+  toJSON PiiLanguage              = "language"
+  toJSON PiiLocation              = "location"
+  toJSON PiiMedicalCondition      = "medical_condition"
+  toJSON PiiMedicalProcess        = "medical_process"
+  toJSON PiiMoneyAmount           = "money_amount"
+  toJSON PiiNationality           = "nationality"
+  toJSON PiiNumberSequence        = "number_sequence"
+  toJSON PiiOccupation            = "occupation"
+  toJSON PiiOrganization          = "organization"
+  toJSON PiiPassportNumber        = "passport_number"
+  toJSON PiiPassword              = "password"
+  toJSON PiiPersonAge             = "person_age"
+  toJSON PiiPersonName            = "person_name"
+  toJSON PiiPhoneNumber           = "phone_number"
+  toJSON PiiPoliticalAffiliation  = "political_affiliation"
+  toJSON PiiReligion              = "religion"
+  toJSON PiiUrl                   = "url"
+  toJSON PiiUsSocialSecurityNumber = "us_social_security_number"
+  toJSON PiiUsername              = "username"
+  toJSON PiiVehicleId             = "vehicle_id"
+
+instance FromJSON PiiPolicy where
+  parseJSON = withText "PiiPolicy" $ \t -> case t of
+    "account_number"          -> pure PiiAccountNumber
+    "banking_information"     -> pure PiiBankingInformation
+    "blood_type"              -> pure PiiBloodType
+    "credit_card_cvv"         -> pure PiiCreditCardCvv
+    "credit_card_expiration"  -> pure PiiCreditCardExpiration
+    "credit_card_number"      -> pure PiiCreditCardNumber
+    "date"                    -> pure PiiDate
+    "date_of_birth"           -> pure PiiDateOfBirth
+    "drivers_license"         -> pure PiiDriversLicense
+    "drug"                    -> pure PiiDrug
+    "email_address"           -> pure PiiEmailAddress
+    "event"                   -> pure PiiEvent
+    "gender_sexuality"        -> pure PiiGenderSexuality
+    "healthcare_number"       -> pure PiiHealthcareNumber
+    "injury"                  -> pure PiiInjury
+    "ip_address"              -> pure PiiIpAddress
+    "language"                -> pure PiiLanguage
+    "location"                -> pure PiiLocation
+    "medical_condition"       -> pure PiiMedicalCondition
+    "medical_process"         -> pure PiiMedicalProcess
+    "money_amount"            -> pure PiiMoneyAmount
+    "nationality"             -> pure PiiNationality
+    "number_sequence"         -> pure PiiNumberSequence
+    "occupation"              -> pure PiiOccupation
+    "organization"            -> pure PiiOrganization
+    "passport_number"         -> pure PiiPassportNumber
+    "password"                -> pure PiiPassword
+    "person_age"              -> pure PiiPersonAge
+    "person_name"             -> pure PiiPersonName
+    "phone_number"            -> pure PiiPhoneNumber
+    "political_affiliation"   -> pure PiiPoliticalAffiliation
+    "religion"                -> pure PiiReligion
+    "url"                     -> pure PiiUrl
+    "us_social_security_number" -> pure PiiUsSocialSecurityNumber
+    "username"                -> pure PiiUsername
+    "vehicle_id"              -> pure PiiVehicleId
+    _                         -> fail $ "Unknown PII policy: " ++ show t
+
 -- | Audio quality for PII-redacted audio
 data RedactPiiAudioQuality
   = QualityMp3
@@ -248,7 +367,7 @@ data TranscriptRequest = TranscriptRequest
   , trRedactPiiAudio               :: Maybe Bool
   , trRedactPiiAudioOptions        :: Maybe Value
   , trRedactPiiAudioQuality        :: Maybe RedactPiiAudioQuality
-  , trRedactPiiPolicies            :: Maybe [Text]
+  , trRedactPiiPolicies            :: Maybe [PiiPolicy]
   , trRedactPiiSub                 :: Maybe RedactPiiSub
   , trSentimentAnalysis            :: Maybe Bool
   , trSpeakerLabels                :: Maybe Bool
