@@ -1,13 +1,16 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE DataKinds                  #-}
+{-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE DerivingStrategies         #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE TypeOperators              #-}
 
 module AssemblyAI.Types
-  ( -- * API Key
-    ApiKey (..)
+  ( -- * Custom tex/html content type
+    HTML
+    -- * API Key
+  , ApiKey (..)
     -- * Transcript Types
   , Transcript (..)
   , TranscriptRequest (..)
@@ -36,9 +39,21 @@ module AssemblyAI.Types
   ) where
 
 import Data.Aeson (FromJSON (..), ToJSON (..), object, withObject, withText, (.:), (.:?), (.=))
+import Data.Text.Lazy.Encoding qualified as TE
+import Data.Text.Lazy qualified as T
 import Data.Text (Text)
 import GHC.Generics (Generic)
+import Network.HTTP.Media ((//), (/:))
+import Servant.API.ContentTypes
 import Web.HttpApiData (ToHttpApiData (..))
+
+data HTML
+
+instance Accept HTML where
+   contentType _ = "text" // "html" /: ("charset", "UTF-8")
+
+instance MimeUnrender HTML Text where
+   mimeUnrender _ t = Right $ T.toStrict $ TE.decodeUtf8 t
 
 -- | API key for authentication
 newtype ApiKey = ApiKey Text

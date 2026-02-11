@@ -9,7 +9,8 @@ module AssemblyAI.API
   ) where
 
 import AssemblyAI.Types
-  ( ParagraphsResponse
+  ( HTML
+  , ParagraphsResponse
   , RedactedAudioResponse
   , SentencesResponse
   , SubtitleFormat
@@ -31,7 +32,6 @@ import Servant.API
   , Header'
   , JSON
   , OctetStream
-  , PlainText
   , Post
   , QueryParam
   , QueryParam'
@@ -86,7 +86,7 @@ type TranscriptAPI =
   :<|> Capture "transcript_id" TranscriptId
     :> Capture "subtitle_format" SubtitleFormat
     :> QueryParam "chars_per_caption" Int
-    :> Get '[PlainText] Text
+    :> Get '[HTML] Text
 
   -- GET /v2/transcript/:transcript_id/word-search?words=...
   :<|> Capture "transcript_id" TranscriptId
