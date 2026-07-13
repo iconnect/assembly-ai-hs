@@ -105,19 +105,22 @@ instance ToHttpApiData TranscriptStatus where
 
 -- | Speech model to use for transcription
 data SpeechModel
-  = Universal3Pro
+  = Universal35Pro
+  | Universal3Pro
   | Universal2
   deriving stock (Show, Eq, Generic)
 
 instance FromJSON SpeechModel where
   parseJSON = withText "SpeechModel" $ \t -> case t of
-    "universal-3-pro" -> pure Universal3Pro
-    "universal-2"     -> pure Universal2
-    _                 -> fail $ "Unknown speech model: " ++ show t
+    "universal-3-5-pro" -> pure Universal35Pro
+    "universal-3-pro"   -> pure Universal3Pro
+    "universal-2"       -> pure Universal2
+    _                   -> fail $ "Unknown speech model: " ++ show t
 
 instance ToJSON SpeechModel where
-  toJSON Universal3Pro = "universal-3-pro"
-  toJSON Universal2    = "universal-2"
+  toJSON Universal35Pro = "universal-3-5-pro"
+  toJSON Universal3Pro  = "universal-3-pro"
+  toJSON Universal2     = "universal-2"
 
 -- | Request to create a new transcript
 data TranscriptRequest = TranscriptRequest

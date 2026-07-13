@@ -31,7 +31,7 @@ main = do
   -- Submit for transcription using the uploaded URL
   let req = TranscriptRequest
         { trAudioUrl     = AudioUrl (ufUploadUrl uploaded)
-        , trSpeechModels = [Universal3Pro, Universal2]
+        , trSpeechModels = [Universal35Pro, Universal2]
         }
   res <- runAssemblyAI client (createTranscript client req)
   case res of
