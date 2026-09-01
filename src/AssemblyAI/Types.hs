@@ -7,8 +7,8 @@
 {-# LANGUAGE TypeOperators              #-}
 
 module AssemblyAI.Types
-  ( -- * Custom tex/html content type
-    HTML
+  ( -- * Custom content type for the subtitles
+    Subtitles
     -- * API Key
   , ApiKey (..)
     -- * Transcript Types
@@ -51,17 +51,21 @@ import Data.Text.Lazy.Encoding qualified as TE
 import Data.Text.Lazy qualified as T
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import Network.HTTP.Media ((//), (/:))
+import Network.HTTP.Media ((//))
 import Servant.API.ContentTypes
 import Web.HttpApiData (ToHttpApiData (..))
 
-data HTML
+-- | Subtitle payloads. AssemblyAI has served these as text/plain (docs),
+-- text/html (observed Feb 2026) and text/vtt (observed Aug 2026), so don't
+-- pin the content type — the body is opaque text either way.
+-- See https://github.com/iconnect/hermes/issues/2609
+data Subtitles
 
-instance Accept HTML where
-   contentType _ = "text" // "html" /: ("charset", "UTF-8")
+instance Accept Subtitles where
+  contentType _ = "*" // "*"
 
-instance MimeUnrender HTML Text where
-   mimeUnrender _ t = Right $ T.toStrict $ TE.decodeUtf8 t
+instance MimeUnrender Subtitles Text where
+  mimeUnrender _ = Right . T.toStrict . TE.decodeUtf8
 
 -- | API key for authentication
 newtype ApiKey = ApiKey Text

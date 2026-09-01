@@ -9,8 +9,7 @@ module AssemblyAI.API
   ) where
 
 import AssemblyAI.Types
-  ( HTML
-  , ParagraphsResponse
+  ( ParagraphsResponse
   , RedactedAudioResponse
   , SentencesResponse
   , SubtitleFormat
@@ -20,7 +19,7 @@ import AssemblyAI.Types
   , TranscriptRequest
   , TranscriptStatus
   , UploadedFile
-  , WordSearchResponse
+  , WordSearchResponse, Subtitles
   )
 import Data.ByteString.Lazy (ByteString)
 import Data.Proxy (Proxy (..))
@@ -86,7 +85,7 @@ type TranscriptAPI =
   :<|> Capture "transcript_id" TranscriptId
     :> Capture "subtitle_format" SubtitleFormat
     :> QueryParam "chars_per_caption" Int
-    :> Get '[HTML] Text
+    :> Get '[Subtitles] Text
 
   -- GET /v2/transcript/:transcript_id/word-search?words=...
   :<|> Capture "transcript_id" TranscriptId
