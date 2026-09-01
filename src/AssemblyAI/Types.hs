@@ -58,7 +58,6 @@ import Web.HttpApiData (ToHttpApiData (..))
 -- | Subtitle payloads. AssemblyAI has served these as text/plain (docs),
 -- text/html (observed Feb 2026) and text/vtt (observed Aug 2026), so don't
 -- pin the content type — the body is opaque text either way.
--- See https://github.com/iconnect/hermes/issues/2609
 data Subtitles
 
 instance Accept Subtitles where
