@@ -116,19 +116,24 @@ instance ToHttpApiData TranscriptStatus where
 
 -- | Speech model to use for transcription
 data SpeechModel
-  = Universal35Pro
+  = AssemblyAISTT37
+  -- ^ AssemblyAI-STT-3.7, the recommended pre-recorded model.
+  | Universal35Pro
+  -- ^ Deprecated by AssemblyAI in favour of 'AssemblyAISTT37'.
   | Universal3Pro
   | Universal2
   deriving stock (Show, Eq, Generic)
 
 instance FromJSON SpeechModel where
   parseJSON = withText "SpeechModel" $ \t -> case t of
+    "assemblyai-stt-3-7" -> pure AssemblyAISTT37
     "universal-3-5-pro" -> pure Universal35Pro
     "universal-3-pro"   -> pure Universal3Pro
     "universal-2"       -> pure Universal2
     _                   -> fail $ "Unknown speech model: " ++ show t
 
 instance ToJSON SpeechModel where
+  toJSON AssemblyAISTT37 = "assemblyai-stt-3-7"
   toJSON Universal35Pro = "universal-3-5-pro"
   toJSON Universal3Pro  = "universal-3-pro"
   toJSON Universal2     = "universal-2"
