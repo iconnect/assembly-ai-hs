@@ -29,7 +29,7 @@ main = do
       pure u
 
   -- Submit for transcription using the uploaded URL
-  let req = newTranscriptRequest (AudioUrl (ufUploadUrl uploaded)) [Universal35Pro, Universal2]
+  let req = newTranscriptRequest (AudioUrl (ufUploadUrl uploaded)) [AssemblyAISTT37, Universal2]
   res <- runAssemblyAI client (createTranscript client req)
   case res of
     Left err -> error $ "Transcription failed: " ++ T.unpack err
